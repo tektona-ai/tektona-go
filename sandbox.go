@@ -74,24 +74,16 @@ func (s *sandboxClient) Create(ctx context.Context, params CreateSandboxParams) 
 	if params.Wait {
 		query = &api.CreateSandboxParams{Wait: &params.Wait}
 	}
-	resp, err := s.raw.CreateSandboxWithResponse(ctx, query, api.CreateSandboxJSONRequestBody{
-		Org: org, Project: project, Template: params.Template, Name: params.Name,
-		Location: params.Location, Resources: params.Resources, Env: params.Env,
-		User: params.User, Workdir: params.Workdir, Tags: params.Tags, Public: params.Public,
-		EgressNetworkPolicy: params.EgressNetworkPolicy, EgressProxyProfile: params.EgressProxyProfile,
-		AutoPauseAfter: params.AutoPauseAfter, AutoPauseMode: params.AutoPauseMode,
-		AutoResume: params.AutoResume, AutoDeleteAfter: params.AutoDeleteAfter,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusCreated {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON201 == nil {
-		return nil, fmt.Errorf("create sandbox: HTTP 201 lacks a JSON response")
-	}
-	return resp.JSON201, nil
+	return resourceJSON[api.CreateSandboxResponseBody](func() (*http.Response, error) {
+		return s.raw.CreateSandbox(ctx, query, api.CreateSandboxJSONRequestBody{
+			Org: org, Project: project, Template: params.Template, Name: params.Name,
+			Location: params.Location, Resources: params.Resources, Env: params.Env,
+			User: params.User, Workdir: params.Workdir, Tags: params.Tags, Public: params.Public,
+			EgressNetworkPolicy: params.EgressNetworkPolicy, EgressProxyProfile: params.EgressProxyProfile,
+			AutoPauseAfter: params.AutoPauseAfter, AutoPauseMode: params.AutoPauseMode,
+			AutoResume: params.AutoResume, AutoDeleteAfter: params.AutoDeleteAfter,
+		})
+	}, http.StatusCreated, "create sandbox")
 }
 
 func (s *sandboxClient) List(ctx context.Context, params *ListSandboxesParams) (*api.ListSandboxesBody, error) {
@@ -108,17 +100,9 @@ func (s *sandboxClient) List(ctx context.Context, params *ListSandboxesParams) (
 	if p.Project == nil && s.project != "" {
 		p.Project = &s.project
 	}
-	resp, err := s.raw.ListSandboxesWithResponse(ctx, &p)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("list sandboxes: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ListSandboxesBody](func() (*http.Response, error) {
+		return s.raw.ListSandboxes(ctx, &p)
+	}, http.StatusOK, "list sandboxes")
 }
 
 func (s *sandboxClient) Get(ctx context.Context, idOrName string, params *GetSandboxParams) (*api.SandboxObject, error) {
@@ -132,17 +116,9 @@ func (s *sandboxClient) Get(ctx context.Context, idOrName string, params *GetSan
 	if err := s.address(idOrName, &p.Org, &p.Project); err != nil {
 		return nil, err
 	}
-	resp, err := s.raw.GetSandboxWithResponse(ctx, idOrName, &p)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("get sandbox: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.SandboxObject](func() (*http.Response, error) {
+		return s.raw.GetSandbox(ctx, idOrName, &p)
+	}, http.StatusOK, "get sandbox")
 }
 
 func (s *sandboxClient) Delete(ctx context.Context, idOrName string, params *DeleteSandboxParams) error {
@@ -156,14 +132,9 @@ func (s *sandboxClient) Delete(ctx context.Context, idOrName string, params *Del
 	if err := s.address(idOrName, &p.Org, &p.Project); err != nil {
 		return err
 	}
-	resp, err := s.raw.DeleteSandboxWithResponse(ctx, idOrName, &p)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode() != http.StatusNoContent {
-		return responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	return nil
+	return resourceNoContent(func() (*http.Response, error) {
+		return s.raw.DeleteSandbox(ctx, idOrName, &p)
+	})
 }
 
 func (s *sandboxClient) address(value string, org, project **string) error {

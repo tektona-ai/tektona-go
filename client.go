@@ -45,8 +45,13 @@ func WithProject(project string) Option {
 
 // Client shares authentication and scope defaults across resources.
 type Client struct {
-	raw     *api.ClientWithResponses
-	sandbox Sandbox
+	raw          *api.ClientWithResponses
+	org, project string
+	sandbox      Sandbox
+	location     Location
+	meta         Meta
+	organization Organization
+	projectAPI   Project
 }
 
 // NewClient creates a client. It reads TEKTONA_API_KEY, TEKTONA_API_URL, TEKTONA_ORG, and TEKTONA_PROJECT.
@@ -94,8 +99,12 @@ func NewClient(opts ...Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Client{raw: raw}
+	c := &Client{raw: raw, org: cfg.org, project: cfg.project}
 	c.sandbox = &sandboxClient{raw: raw, org: cfg.org, project: cfg.project}
+	c.location = &locationClient{raw: raw}
+	c.meta = &metaClient{raw: raw}
+	c.organization = &organizationClient{raw: raw, org: c.org}
+	c.projectAPI = &projectClient{raw: raw, org: c.org}
 	return c, nil
 }
 
