@@ -54,9 +54,6 @@ func (o *organizationClient) Create(ctx context.Context, params CreateOrganizati
 
 func (o *organizationClient) Get(ctx context.Context, org string) (*api.OrgResponse, error) {
 	if org == "" {
-		org = o.org
-	}
-	if org == "" {
 		return nil, fmt.Errorf("get organization requires org")
 	}
 	return resourceJSON[api.OrgResponse](func() (*http.Response, error) {
@@ -65,9 +62,6 @@ func (o *organizationClient) Get(ctx context.Context, org string) (*api.OrgRespo
 }
 
 func (o *organizationClient) Update(ctx context.Context, org string, params UpdateOrganizationParams) (*api.OrgResponse, error) {
-	if org == "" {
-		org = o.org
-	}
 	if org == "" || params.DisplayName == "" {
 		return nil, fmt.Errorf("update organization requires org and display name")
 	}

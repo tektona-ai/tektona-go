@@ -28,14 +28,14 @@ func TestOrganizationMethods(t *testing.T) {
 		{"create", "POST", "/v1/orgs", "", `{"display_name":"New Org","name":"new-org"}`, `{"name":"new-org"}`, 201, func(o Organization) (any, error) {
 			return o.Create(context.Background(), CreateOrganizationParams{Name: "new-org", DisplayName: "New Org"})
 		}},
-		{"get default", "GET", "/v1/orgs/acme", "", "", `{"name":"acme"}`, 200, func(o Organization) (any, error) {
-			return o.Get(context.Background(), "")
+		{"get", "GET", "/v1/orgs/acme", "", "", `{"name":"acme"}`, 200, func(o Organization) (any, error) {
+			return o.Get(context.Background(), "acme")
 		}},
 		{"get override", "GET", "/v1/orgs/other", "", "", `{"name":"other"}`, 200, func(o Organization) (any, error) {
 			return o.Get(context.Background(), "other")
 		}},
 		{"update", "PUT", "/v1/orgs/acme", "", `{"default_location_id":"eu","default_project_role":"reader","display_name":"Renamed"}`, `{"name":"acme"}`, 200, func(o Organization) (any, error) {
-			return o.Update(context.Background(), "", UpdateOrganizationParams{DisplayName: "Renamed", DefaultLocationId: &location, DefaultProjectRole: &role})
+			return o.Update(context.Background(), "acme", UpdateOrganizationParams{DisplayName: "Renamed", DefaultLocationId: &location, DefaultProjectRole: &role})
 		}},
 		{"members", "GET", "/v1/orgs/acme/members", "q=alice&cursor=next&limit=2", "", `{"items":[]}`, 200, func(o Organization) (any, error) {
 			return o.ListMembers(context.Background(), "", &ListOrganizationMembersParams{Q: &filter, Cursor: &cursor, Limit: &limit})
@@ -106,9 +106,9 @@ func TestOrganizationResponses(t *testing.T) {
 			_, err := o.Create(context.Background(), CreateOrganizationParams{Name: "a", DisplayName: "A"})
 			return err
 		}},
-		{"get", func(o Organization) error { _, err := o.Get(context.Background(), ""); return err }},
+		{"get", func(o Organization) error { _, err := o.Get(context.Background(), "acme"); return err }},
 		{"update", func(o Organization) error {
-			_, err := o.Update(context.Background(), "", UpdateOrganizationParams{DisplayName: "A"})
+			_, err := o.Update(context.Background(), "acme", UpdateOrganizationParams{DisplayName: "A"})
 			return err
 		}},
 		{"members", func(o Organization) error { _, err := o.ListMembers(context.Background(), "", nil); return err }},
@@ -133,19 +133,32 @@ func TestOrganizationResponses(t *testing.T) {
 func TestOrganizationScopePrecedence(t *testing.T) {
 	t.Setenv("TEKTONA_ORG", "env-org")
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/orgs/option-org" {
+		if r.URL.Path != "/v1/orgs/option-org/members" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{}`)
 	}, WithOrg("option-org"))
-	if _, err := client.Organization().Get(context.Background(), ""); err != nil {
+	if _, err := client.Organization().ListMembers(context.Background(), "", nil); err != nil {
 		t.Fatal(err)
 	}
 	blocked := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("unexpected request: %s %s", r.Method, r.URL)
 	}, WithOrg(""))
-	if _, err := blocked.Organization().Get(context.Background(), ""); err == nil {
+	if _, err := blocked.Organization().ListMembers(context.Background(), "", nil); err == nil {
 		t.Error("explicit empty option inherited environment")
+	}
+}
+
+func TestOrganizationRejectsEmptyResourceName(t *testing.T) {
+	t.Parallel()
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+	}, WithOrg("production"))
+	if _, err := client.Organization().Get(context.Background(), ""); err == nil {
+		t.Error("get accepted an empty organization name")
+	}
+	if _, err := client.Organization().Update(context.Background(), "", UpdateOrganizationParams{DisplayName: "Production"}); err == nil {
+		t.Error("update accepted an empty organization name")
 	}
 }
