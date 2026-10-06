@@ -26,7 +26,7 @@ Pass `&tektona.ListSandboxesParams{Project: &empty}` to list every project in an
 Pass a sandbox ID to `Get` or `Delete` without scope, or pass a name with org and project scope.
 Use `client.Project().List(ctx, nil)` to list projects across organizations.
 Use `client.Project().ListForOrg(ctx, "", nil)` to list projects in the default organization.
-Pass an empty project name to a project method to use the default project.
+Pass a project name to `Get`, `Update`, `Delete`, and lifecycle default methods. An empty name returns an error.
 Set `Org` in project method parameters to override the default organization.
 Location, metadata, and cross-organization list methods do not use scope defaults.
 API failures return `*tektona.APIError`. Use `errors.As` to inspect the status and problem.

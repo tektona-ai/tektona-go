@@ -32,7 +32,7 @@ func TestProjectMethods(t *testing.T) {
 			return p.Create(context.Background(), CreateProjectParams{Org: "other", Name: "new", DisplayName: "New", Description: &description})
 		}},
 		{"get default", "GET", "/v1/orgs/acme/projects/web", "", "", `{"name":"web"}`, 200, func(p Project) (any, error) {
-			return p.Get(context.Background(), "", nil)
+			return p.Get(context.Background(), "web", nil)
 		}},
 		{"get override", "GET", "/v1/orgs/other/projects/another", "", "", `{"name":"another"}`, 200, func(p Project) (any, error) {
 			return p.Get(context.Background(), "another", &GetProjectParams{Org: "other"})
@@ -48,7 +48,7 @@ func TestProjectMethods(t *testing.T) {
 			return p.GetLifecycleDefaults(context.Background(), "another", &GetProjectLifecycleDefaultsParams{Org: "other"})
 		}},
 		{"update lifecycle", "PUT", "/v1/orgs/acme/projects/web/lifecycle-defaults", "", `{"auto_delete_after":"7d","auto_pause_after":"15m","auto_pause_mode":"suspend","auto_resume":true}`, `{}`, 200, func(p Project) (any, error) {
-			return p.UpdateLifecycleDefaults(context.Background(), "", UpdateProjectLifecycleDefaultsParams{
+			return p.UpdateLifecycleDefaults(context.Background(), "web", UpdateProjectLifecycleDefaultsParams{
 				AutoDeleteAfter: &deleteAfter, AutoPauseAfter: &pause, AutoPauseMode: &mode, AutoResume: &resume,
 			})
 		}},
@@ -128,15 +128,15 @@ func TestProjectResponses(t *testing.T) {
 			_, err := p.Create(context.Background(), CreateProjectParams{Name: "web", DisplayName: "Web"})
 			return err
 		}},
-		{"get", func(p Project) error { _, err := p.Get(context.Background(), "", nil); return err }},
+		{"get", func(p Project) error { _, err := p.Get(context.Background(), "web", nil); return err }},
 		{"update", func(p Project) error {
-			_, err := p.Update(context.Background(), "", UpdateProjectParams{DisplayName: "Web"})
+			_, err := p.Update(context.Background(), "web", UpdateProjectParams{DisplayName: "Web"})
 			return err
 		}},
-		{"delete", func(p Project) error { return p.Delete(context.Background(), "", nil) }},
-		{"get lifecycle", func(p Project) error { _, err := p.GetLifecycleDefaults(context.Background(), "", nil); return err }},
+		{"delete", func(p Project) error { return p.Delete(context.Background(), "web", nil) }},
+		{"get lifecycle", func(p Project) error { _, err := p.GetLifecycleDefaults(context.Background(), "web", nil); return err }},
 		{"update lifecycle", func(p Project) error {
-			_, err := p.UpdateLifecycleDefaults(context.Background(), "", UpdateProjectLifecycleDefaultsParams{})
+			_, err := p.UpdateLifecycleDefaults(context.Background(), "web", UpdateProjectLifecycleDefaultsParams{})
 			return err
 		}},
 	} {
@@ -169,9 +169,9 @@ func TestProjectMissingJSONAndDeleteStatus(t *testing.T) {
 			}, WithOrg("acme"), WithProject("web"))
 			var err error
 			if status == http.StatusOK {
-				_, err = client.Project().Get(context.Background(), "", nil)
+				_, err = client.Project().Get(context.Background(), "web", nil)
 			} else {
-				err = client.Project().Delete(context.Background(), "", nil)
+				err = client.Project().Delete(context.Background(), "web", nil)
 			}
 			if err == nil {
 				t.Error("expected status or JSON error")
@@ -184,7 +184,7 @@ func TestProjectScopePrecedence(t *testing.T) {
 	t.Setenv("TEKTONA_ORG", "env-org")
 	t.Setenv("TEKTONA_PROJECT", "env-project")
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/orgs/option-org/projects/env-project" {
+		if r.URL.Path != "/v1/orgs/option-org/projects/web" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -193,14 +193,46 @@ func TestProjectScopePrecedence(t *testing.T) {
 	if client.org != "option-org" || client.project != "env-project" {
 		t.Errorf("stored scope = %s/%s", client.org, client.project)
 	}
-	if _, err := client.Project().Get(context.Background(), "", nil); err != nil {
+	if _, err := client.Project().Get(context.Background(), "web", nil); err != nil {
 		t.Fatal(err)
 	}
 
 	blocked := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("unexpected request: %s %s", r.Method, r.URL)
 	}, WithOrg(""), WithProject(""))
-	if _, err := blocked.Project().Get(context.Background(), "", nil); err == nil {
+	if _, err := blocked.Project().Get(context.Background(), "web", nil); err == nil {
 		t.Error("explicit empty options inherited environment")
+	}
+}
+
+func TestProjectRejectsEmptyResourceName(t *testing.T) {
+	t.Parallel()
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+	}, WithOrg("production"), WithProject("production"))
+	for _, tc := range []struct {
+		name string
+		call func() error
+	}{
+		{"get", func() error { _, err := client.Project().Get(context.Background(), "", nil); return err }},
+		{"update", func() error {
+			_, err := client.Project().Update(context.Background(), "", UpdateProjectParams{DisplayName: "Production"})
+			return err
+		}},
+		{"delete", func() error { return client.Project().Delete(context.Background(), "", nil) }},
+		{"get lifecycle", func() error {
+			_, err := client.Project().GetLifecycleDefaults(context.Background(), "", nil)
+			return err
+		}},
+		{"update lifecycle", func() error {
+			_, err := client.Project().UpdateLifecycleDefaults(context.Background(), "", UpdateProjectLifecycleDefaultsParams{})
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.call(); err == nil {
+				t.Error("expected a local error for an empty project name")
+			}
+		})
 	}
 }

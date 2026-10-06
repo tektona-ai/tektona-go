@@ -38,34 +38,18 @@ type organizationClient struct {
 func (c *Client) Organization() Organization { return c.organization }
 
 func (o *organizationClient) List(ctx context.Context, params *ListOrganizationsParams) (*api.ListOrgsBody, error) {
-	resp, err := o.raw.ListOrgsWithResponse(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("list organizations: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ListOrgsBody](func() (*http.Response, error) {
+		return o.raw.ListOrgs(ctx, params)
+	}, http.StatusOK, "list organizations")
 }
 
 func (o *organizationClient) Create(ctx context.Context, params CreateOrganizationParams) (*api.OrgResponse, error) {
 	if params.Name == "" || params.DisplayName == "" {
 		return nil, fmt.Errorf("create organization requires name and display name")
 	}
-	resp, err := o.raw.CreateOrgWithResponse(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusCreated {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON201 == nil {
-		return nil, fmt.Errorf("create organization: HTTP 201 lacks a JSON response")
-	}
-	return resp.JSON201, nil
+	return resourceJSON[api.OrgResponse](func() (*http.Response, error) {
+		return o.raw.CreateOrg(ctx, params)
+	}, http.StatusCreated, "create organization")
 }
 
 func (o *organizationClient) Get(ctx context.Context, org string) (*api.OrgResponse, error) {
@@ -75,17 +59,9 @@ func (o *organizationClient) Get(ctx context.Context, org string) (*api.OrgRespo
 	if org == "" {
 		return nil, fmt.Errorf("get organization requires org")
 	}
-	resp, err := o.raw.GetOrgWithResponse(ctx, org)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("get organization: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.OrgResponse](func() (*http.Response, error) {
+		return o.raw.GetOrg(ctx, org)
+	}, http.StatusOK, "get organization")
 }
 
 func (o *organizationClient) Update(ctx context.Context, org string, params UpdateOrganizationParams) (*api.OrgResponse, error) {
@@ -95,17 +71,9 @@ func (o *organizationClient) Update(ctx context.Context, org string, params Upda
 	if org == "" || params.DisplayName == "" {
 		return nil, fmt.Errorf("update organization requires org and display name")
 	}
-	resp, err := o.raw.UpdateOrgWithResponse(ctx, org, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("update organization: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.OrgResponse](func() (*http.Response, error) {
+		return o.raw.UpdateOrg(ctx, org, params)
+	}, http.StatusOK, "update organization")
 }
 
 func (o *organizationClient) ListMembers(ctx context.Context, org string, params *ListOrganizationMembersParams) (*api.ListMembersBody, error) {
@@ -115,15 +83,7 @@ func (o *organizationClient) ListMembers(ctx context.Context, org string, params
 	if org == "" {
 		return nil, fmt.Errorf("list organization members requires org")
 	}
-	resp, err := o.raw.ListOrgMembersWithResponse(ctx, org, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("list organization members: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ListMembersBody](func() (*http.Response, error) {
+		return o.raw.ListOrgMembers(ctx, org, params)
+	}, http.StatusOK, "list organization members")
 }

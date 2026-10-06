@@ -104,7 +104,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	c.location = &locationClient{raw: raw}
 	c.meta = &metaClient{raw: raw}
 	c.organization = &organizationClient{raw: raw, org: c.org}
-	c.projectAPI = &projectClient{raw: raw, org: c.org, project: c.project}
+	c.projectAPI = &projectClient{raw: raw, org: c.org}
 	return c, nil
 }
 

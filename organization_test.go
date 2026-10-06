@@ -16,7 +16,7 @@ func TestOrganizationMethods(t *testing.T) {
 	t.Parallel()
 	cursor, limit, filter := "next", int32(2), "alice"
 	location := "eu"
-	role := apiRole()
+	role := api.UpdateOrgInputBodyDefaultProjectRole("reader")
 	for _, tc := range []struct {
 		name, method, path, query, body, response string
 		status                                    int
@@ -34,7 +34,7 @@ func TestOrganizationMethods(t *testing.T) {
 		{"get override", "GET", "/v1/orgs/other", "", "", `{"name":"other"}`, 200, func(o Organization) (any, error) {
 			return o.Get(context.Background(), "other")
 		}},
-		{"update", "PUT", "/v1/orgs/acme", "", `{"default_location_id":"eu","default_project_role":"viewer","display_name":"Renamed"}`, `{"name":"acme"}`, 200, func(o Organization) (any, error) {
+		{"update", "PUT", "/v1/orgs/acme", "", `{"default_location_id":"eu","default_project_role":"reader","display_name":"Renamed"}`, `{"name":"acme"}`, 200, func(o Organization) (any, error) {
 			return o.Update(context.Background(), "", UpdateOrganizationParams{DisplayName: "Renamed", DefaultLocationId: &location, DefaultProjectRole: &role})
 		}},
 		{"members", "GET", "/v1/orgs/acme/members", "q=alice&cursor=next&limit=2", "", `{"items":[]}`, 200, func(o Organization) (any, error) {
@@ -71,8 +71,6 @@ func TestOrganizationMethods(t *testing.T) {
 		})
 	}
 }
-
-func apiRole() api.UpdateOrgInputBodyDefaultProjectRole { return "viewer" }
 
 func TestOrganizationValidation(t *testing.T) {
 	t.Parallel()

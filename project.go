@@ -60,8 +60,8 @@ type Project interface {
 }
 
 type projectClient struct {
-	raw          *api.ClientWithResponses
-	org, project string
+	raw *api.ClientWithResponses
+	org string
 }
 
 // Project returns the project methods.
@@ -71,9 +71,6 @@ func (p *projectClient) address(org, project string) (string, string, error) {
 	if org == "" {
 		org = p.org
 	}
-	if project == "" {
-		project = p.project
-	}
 	if org == "" || project == "" {
 		return "", "", fmt.Errorf("project requires org and project")
 	}
@@ -81,17 +78,9 @@ func (p *projectClient) address(org, project string) (string, string, error) {
 }
 
 func (p *projectClient) List(ctx context.Context, params *ListProjectsParams) (*api.ListAccessibleProjectsBody, error) {
-	resp, err := p.raw.ListProjectsWithResponse(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("list projects: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ListAccessibleProjectsBody](func() (*http.Response, error) {
+		return p.raw.ListProjects(ctx, params)
+	}, http.StatusOK, "list projects")
 }
 
 func (p *projectClient) ListForOrg(ctx context.Context, org string, params *ListProjectsForOrgParams) (*api.ListProjectsBody, error) {
@@ -101,17 +90,9 @@ func (p *projectClient) ListForOrg(ctx context.Context, org string, params *List
 	if org == "" {
 		return nil, fmt.Errorf("list organization projects requires org")
 	}
-	resp, err := p.raw.ListOrgProjectsWithResponse(ctx, org, params)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("list organization projects: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ListProjectsBody](func() (*http.Response, error) {
+		return p.raw.ListOrgProjects(ctx, org, params)
+	}, http.StatusOK, "list organization projects")
 }
 
 func (p *projectClient) Create(ctx context.Context, params CreateProjectParams) (*api.ProjectResponse, error) {
@@ -122,19 +103,11 @@ func (p *projectClient) Create(ctx context.Context, params CreateProjectParams) 
 	if org == "" || params.Name == "" || params.DisplayName == "" {
 		return nil, fmt.Errorf("create project requires org, name, and display name")
 	}
-	resp, err := p.raw.CreateOrgProjectWithResponse(ctx, org, api.CreateOrgProjectJSONRequestBody{
-		Name: params.Name, DisplayName: params.DisplayName, Description: params.Description,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusCreated {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON201 == nil {
-		return nil, fmt.Errorf("create project: HTTP 201 lacks a JSON response")
-	}
-	return resp.JSON201, nil
+	return resourceJSON[api.ProjectResponse](func() (*http.Response, error) {
+		return p.raw.CreateOrgProject(ctx, org, api.CreateOrgProjectJSONRequestBody{
+			Name: params.Name, DisplayName: params.DisplayName, Description: params.Description,
+		})
+	}, http.StatusCreated, "create project")
 }
 
 func (p *projectClient) Get(ctx context.Context, project string, params *GetProjectParams) (*api.ProjectResponse, error) {
@@ -146,17 +119,9 @@ func (p *projectClient) Get(ctx context.Context, project string, params *GetProj
 	if err != nil {
 		return nil, err
 	}
-	resp, err := p.raw.GetOrgProjectWithResponse(ctx, org, project)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("get project: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ProjectResponse](func() (*http.Response, error) {
+		return p.raw.GetOrgProject(ctx, org, project)
+	}, http.StatusOK, "get project")
 }
 
 func (p *projectClient) Update(ctx context.Context, project string, params UpdateProjectParams) (*api.ProjectResponse, error) {
@@ -167,19 +132,11 @@ func (p *projectClient) Update(ctx context.Context, project string, params Updat
 	if params.DisplayName == "" {
 		return nil, fmt.Errorf("update project requires display name")
 	}
-	resp, err := p.raw.UpdateOrgProjectWithResponse(ctx, org, project, api.UpdateOrgProjectJSONRequestBody{
-		DisplayName: params.DisplayName, Description: params.Description,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("update project: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.ProjectResponse](func() (*http.Response, error) {
+		return p.raw.UpdateOrgProject(ctx, org, project, api.UpdateOrgProjectJSONRequestBody{
+			DisplayName: params.DisplayName, Description: params.Description,
+		})
+	}, http.StatusOK, "update project")
 }
 
 func (p *projectClient) Delete(ctx context.Context, project string, params *DeleteProjectParams) error {
@@ -191,14 +148,9 @@ func (p *projectClient) Delete(ctx context.Context, project string, params *Dele
 	if err != nil {
 		return err
 	}
-	resp, err := p.raw.DeleteOrgProjectWithResponse(ctx, org, project)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode() != http.StatusNoContent {
-		return responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	return nil
+	return resourceNoContent(func() (*http.Response, error) {
+		return p.raw.DeleteOrgProject(ctx, org, project)
+	})
 }
 
 func (p *projectClient) GetLifecycleDefaults(ctx context.Context, project string, params *GetProjectLifecycleDefaultsParams) (*api.LifecycleDefaultsBody, error) {
@@ -210,17 +162,9 @@ func (p *projectClient) GetLifecycleDefaults(ctx context.Context, project string
 	if err != nil {
 		return nil, err
 	}
-	resp, err := p.raw.GetProjectLifecycleDefaultsWithResponse(ctx, org, project)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("get project lifecycle defaults: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.LifecycleDefaultsBody](func() (*http.Response, error) {
+		return p.raw.GetProjectLifecycleDefaults(ctx, org, project)
+	}, http.StatusOK, "get project lifecycle defaults")
 }
 
 func (p *projectClient) UpdateLifecycleDefaults(ctx context.Context, project string, params UpdateProjectLifecycleDefaultsParams) (*api.LifecycleDefaultsBody, error) {
@@ -228,18 +172,10 @@ func (p *projectClient) UpdateLifecycleDefaults(ctx context.Context, project str
 	if err != nil {
 		return nil, err
 	}
-	resp, err := p.raw.UpdateProjectLifecycleDefaultsWithResponse(ctx, org, project, api.UpdateProjectLifecycleDefaultsJSONRequestBody{
-		AutoDeleteAfter: params.AutoDeleteAfter, AutoPauseAfter: params.AutoPauseAfter,
-		AutoPauseMode: params.AutoPauseMode, AutoResume: params.AutoResume,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, responseError(resp.StatusCode(), resp.HTTPResponse.Header, resp.Body, resp.ApplicationproblemJSONDefault)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("update project lifecycle defaults: HTTP 200 lacks a JSON response")
-	}
-	return resp.JSON200, nil
+	return resourceJSON[api.LifecycleDefaultsBody](func() (*http.Response, error) {
+		return p.raw.UpdateProjectLifecycleDefaults(ctx, org, project, api.UpdateProjectLifecycleDefaultsJSONRequestBody{
+			AutoDeleteAfter: params.AutoDeleteAfter, AutoPauseAfter: params.AutoPauseAfter,
+			AutoPauseMode: params.AutoPauseMode, AutoResume: params.AutoResume,
+		})
+	}, http.StatusOK, "update project lifecycle defaults")
 }
