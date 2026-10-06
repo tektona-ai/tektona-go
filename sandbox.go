@@ -46,12 +46,22 @@ type ListSandboxesParams = api.ListSandboxesParams
 // DeleteSandboxParams holds optional scope for a sandbox name.
 type DeleteSandboxParams = api.DeleteSandboxParams
 
-// Sandbox supports the first four sandbox operations. Callers can replace it with a fake.
+// Sandbox supports sandbox operations. Callers can replace it with a fake.
 type Sandbox interface {
 	Create(ctx context.Context, params CreateSandboxParams) (*api.CreateSandboxResponseBody, error)
 	Get(ctx context.Context, idOrName string, params *GetSandboxParams) (*api.SandboxObject, error)
 	List(ctx context.Context, params *ListSandboxesParams) (*api.ListSandboxesBody, error)
 	Delete(ctx context.Context, idOrName string, params *DeleteSandboxParams) error
+	StartDesktop(ctx context.Context, idOrName string, params *StartDesktopParams) (*api.DesktopActionOutputBody, error)
+	StopDesktop(ctx context.Context, idOrName string, params *StopDesktopParams) (*api.DesktopActionOutputBody, error)
+	Pause(ctx context.Context, idOrName string, params PauseSandboxParams) (*api.PauseSandboxResponse, error)
+	Reboot(ctx context.Context, idOrName string, params *RebootSandboxParams) (*api.RebootSandboxResponseBody, error)
+	Reset(ctx context.Context, idOrName string, params *ResetSandboxParams) (*api.RebootSandboxResponseBody, error)
+	Resize(ctx context.Context, idOrName string, params ResizeSandboxParams) (*api.ResizeResponse, error)
+	Resume(ctx context.Context, idOrName string, params *ResumeSandboxParams) (*api.ResumeSandboxResponseBody, error)
+	Fork(ctx context.Context, idOrName string, params ForkSandboxParams) (*api.ForkResponse, error)
+	Rename(ctx context.Context, idOrName string, params RenameSandboxParams) (*api.RenameSandboxResponse, error)
+	Transfer(ctx context.Context, idOrName string, params TransferSandboxParams) (*api.SandboxTransferResponse, error)
 }
 
 type sandboxClient struct {
